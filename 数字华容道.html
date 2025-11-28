@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数字华容道</title>
+    <style>
+        :root {
+            --bg-color: #f0f0f0;
+            --text-color: #333;
+            --tile-bg: #87CEEB;
+            --tile-border: #1E90FF;
+            --button-bg: #4CAF50;
+            --button-hover: #45a049;
+        }
+
+        [data-theme="dark"] {
+            --bg-color: #2c3e50;
+            --text-color: #ecf0f1;
+            --tile-bg: #34495e;
+            --tile-border: #3498db;
+            --button-bg: #2980b9;
+            --button-hover: #3498db;
+        }
+
+        body {
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: var(--bg-color);
+            color: var(--text-color);
+            font-family: Arial, sans-serif;
+            transition: all 0.3s ease;
+        }
+
+        .game-container {
+            position: relative;
+            background: var(--bg-color);
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            margin: 20px 0;
+        }
+
+        .tile {
+            position: absolute;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: var(--tile-bg);
+            border: 2px solid var(--tile-border);
+            border-radius: 8px;
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--text-color);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .tile:hover {
+            filter: brightness(1.1);
+        }
+
+        .controls {
+            margin: 20px 0;
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            background: var(--button-bg);
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            background: var(--button-hover);
+            transform: translateY(-2px);
+        }
+
+        #reset-btn {
+            background: #e67e22;
+        }
+        #reset-btn:hover {
+            background: #d35400;
+        }
+
+        .theme-btn {
+            background: #9b59b6;
+        }
+        .theme-btn:hover {
+            background: #8e44ad;
+        }
+
+        .timer-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 10px 0;
+        }
+        
+        #timer {
+            font-size: 24px;
+            font-family: monospace;
+            color: var(--text-color);
+            margin-bottom: 5px;
+        }
+        
+        .time-units {
+            display: flex;
+            gap: 28px;
+            font-size: 12px;
+            color: var(--text-color);
+            opacity: 0.8;
+        }
+
+        .tile[data-value]:not([data-value="empty"]) {
+            background: hsl(calc(var(--index) * 50), 60%, 75%);
+        }
+    </style>
+    
+</head>
+<body>
+    <div class="controls">
+        <button onclick="handleSizeChange(3)">3x3</button>
+        <button onclick="handleSizeChange(4)">4x4</button>
+        <button onclick="handleSizeChange(5)">5x5</button>
+        <button onclick="handleSizeChange(6)">6x6</button>
+        <button class="theme-btn" onclick="toggleTheme()">🌙 夜间模式</button>
+    </div>
+    <div class="timer-container">
+        <div id="timer">00:00:00.000</div>
+        <div class="time-units">
+            <span>时</span>
+            <span>分</span>
+            <span>秒</span>
+            <span>毫秒</span>
+        </div>
+    </div>
+    <button id="reset-btn" onclick="resetGame()">重置游戏</button>
+    <div id="game-board" class="game-container"></div>
+
+<script>
+// 游戏逻辑变量
+let currentSize = 3;
+let tileSize = 80;
+let boardSize;
+let tiles = [];
+let emptyPos;
+let startTime = 0;
+let currentTime = 0;
+let timerInterval = null;
+let isGameActive = false;
+let isCompleted = false;
+let isDarkTheme = false;
+
+// 主题切换
+function toggleTheme() {
+    isDarkTheme = !isDarkTheme;
+    document.body.setAttribute('data-theme', isDarkTheme ? 'dark' : 'light');
+    document.querySelector('.theme-btn').textContent = isDarkTheme ? '☀️ 白天模式' : '🌙 夜间模式';
+    localStorage.setItem('theme', isDarkTheme ? 'dark' : 'light');
+}
+
+// 初始化主题
+function initTheme() {
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    isDarkTheme = savedTheme === 'dark';
+    document.body.setAttribute('data-theme', savedTheme);
+    document.querySelector('.theme-btn').textContent = isDarkTheme ? '☀️ 白天模式' : '🌙 夜间模式';
+}
+
+function formatTime(ms) {
+    const hours = Math.floor(ms / 3600000);
+    const minutes = Math.floor((ms % 3600000) / 60000);
+    const seconds = Math.floor((ms % 60000) / 1000);
+    const milliseconds = ms % 1000;
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(milliseconds).padStart(3, '0')}`;
+}
+
+function updateTimer() {
+    currentTime = Date.now() - startTime;
+    document.getElementById('timer').textContent = formatTime(currentTime);
+}
+
+function clearTimer() {
+    if(timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+    }
+}
+
+function resetTimerDisplay() {
+    document.getElementById('timer').textContent = '00:00:00.000';
+}
+
+function initGame(size) {
+    currentSize = size;
+    tileSize = size <= 4 ? 80 : size <= 5 ? 70 : 60;
+    boardSize = tileSize * size;
+    
+    const board = document.getElementById('game-board');
+    board.innerHTML = '';
+    board.style.width = `${boardSize}px`;
+    board.style.height = `${boardSize}px`;
+
+    clearTimer();
+    resetTimerDisplay();
+    createTiles();
+    shuffleTiles();
+    renderTiles();
+    
+    isGameActive = false;
+    isCompleted = false;
+    document.getElementById('reset-btn').style.background = '#ff5722';
+}
+
+function resetGame() {
+    if(isGameActive && !confirm('确定要重置当前游戏吗？')) return;
+    initGame(currentSize);
+}
+
+function handleSizeChange(size) {
+    if(isGameActive && !confirm('切换难度将重置当前进度，确定继续吗？')) return;
+    initGame(size);
+}
+
+// 修改后的创建方块函数
+function createTiles() {
+    tiles = [];
+    const total = currentSize * currentSize;
+    
+    for(let i = 1; i <= total; i++) {
+        const tile = document.createElement('div');
+        tile.className = 'tile';
+        tile.textContent = i === total ? '' : i;
+        tile.dataset.value = i === total ? 'empty' : i.toString();
+        tile.style.setProperty('--index', i);
+        tile.style.width = `${tileSize - 4}px`;
+        tile.style.height = `${tileSize - 4}px`;
+        tile.style.fontSize = `${tileSize * 0.3}px`;
+        tile.addEventListener('click', handleTileClick);
+        tiles.push(tile);
+    }
+    
+    emptyPos = currentSize * currentSize - 1;
+    tiles[emptyPos].style.visibility = 'hidden';
+}
+
+function shuffleTiles() {
+    let currentIndex = tiles.length;
+    while(currentIndex > 0) {
+        const randomIndex = Math.floor(Math.random() * currentIndex);
+        currentIndex--;
+        [tiles[currentIndex], tiles[randomIndex]] = [tiles[randomIndex], tiles[currentIndex]];
+    }
+    
+    emptyPos = tiles.findIndex(t => t.dataset.value === 'empty');
+    
+    if(!isSolvable()) {
+        const nonEmptyTiles = tiles.filter(t => t.dataset.value !== 'empty');
+        const firstIndex = tiles.indexOf(nonEmptyTiles[0]);
+        const secondIndex = tiles.indexOf(nonEmptyTiles[1]);
+        [tiles[firstIndex], tiles[secondIndex]] = [tiles[secondIndex], tiles[firstIndex]];
+    }
+    
+    renderTiles();
+}
+
+function isSolvable() {
+    const numbers = tiles
+        .filter(t => t.dataset.value !== 'empty')
+        .map(t => parseInt(t.dataset.value));
+    
+    let inversions = 0;
+    for(let i = 0; i < numbers.length; i++) {
+        for(let j = i + 1; j < numbers.length; j++) {
+            if(numbers[i] > numbers[j]) inversions++;
+        }
+    }
+
+    const blankRow = currentSize - Math.floor(emptyPos / currentSize);
+    
+    if(currentSize % 2 === 1) {
+        return inversions % 2 === 0;
+    } else {
+        return (inversions + blankRow) % 2 === 1;
+    }
+}
+
+function handleTileClick(e) {
+    if(isCompleted) return;
+    
+    if(!isGameActive) {
+        isGameActive = true;
+        startTime = Date.now();
+        clearTimer();
+        timerInterval = setInterval(updateTimer, 10);
+    }
+    
+    const clickedTile = e.target;
+    if(clickedTile.dataset.value === 'empty') return;
+    
+    const clickedIndex = tiles.indexOf(clickedTile);
+    if(canMove(clickedIndex)) {
+        moveTile(clickedIndex);
+        checkWin();
+    }
+}
+
+function canMove(index) {
+    const emptyRow = Math.floor(emptyPos / currentSize);
+    const emptyCol = emptyPos % currentSize;
+    const tileRow = Math.floor(index / currentSize);
+    const tileCol = index % currentSize;
+
+    return (Math.abs(emptyRow - tileRow) === 1 && emptyCol === tileCol) ||
+           (Math.abs(emptyCol - tileCol) === 1 && emptyRow === tileRow);
+}
+
+function moveTile(index) {
+    [tiles[index], tiles[emptyPos]] = [tiles[emptyPos], tiles[index]];
+    emptyPos = index;
+    renderTiles();
+}
+
+function renderTiles() {
+    const board = document.getElementById('game-board');
+    board.innerHTML = '';
+    tiles.forEach((tile, index) => {
+        const row = Math.floor(index / currentSize);
+        const col = index % currentSize;
+        tile.style.left = `${col * tileSize + 2}px`;
+        tile.style.top = `${row * tileSize + 2}px`;
+        tile.style.visibility = tile.dataset.value === 'empty' ? 'hidden' : 'visible';
+        board.appendChild(tile);
+    });
+}
+
+function checkWin() {
+    const isCorrect = tiles.every((tile, index) => {
+        if(tile.dataset.value === 'empty') return index === currentSize * currentSize - 1;
+        return parseInt(tile.dataset.value) === index + 1;
+    });
+    
+    if(isCorrect) {
+        clearTimer();
+        isCompleted = true;
+        isGameActive = false;
+        document.getElementById('reset-btn').style.background = '#4CAF50';
+        setTimeout(() => {
+            document.getElementById('reset-btn').style.background = '#ff5722';
+        }, 2000);
+    }
+}
+
+// 初始化时加载主题
+initTheme();
+// 初始化游戏
+initGame(3);
+</script>
+</body>
+</html>

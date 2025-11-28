@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>踩方块游戏</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #6a11cb 0%, #082a628f 100%);
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .game-info {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 15px;
+            border-radius: 10px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .game-board {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-gap: 10px;
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 15px;
+            border-radius: 15px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .cell {
+            border-radius: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            user-select: none;
+        }
+
+        .cell.off {
+            background-color: #ff5252;
+            color: white;
+        }
+
+        .cell.on {
+            background-color: #4caf50;
+            color: white;
+        }
+
+        .cell:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            width: 100%;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        button {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            padding: 12px 25px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(5px);
+        }
+
+        button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-3px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .moves-counter {
+            font-size: 18px;
+            font-weight: bold;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px 20px;
+            border-radius: 50px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .instructions {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 15px;
+            border-radius: 10px;
+            width: 100%;
+            text-align: left;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .instructions h3 {
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .instructions p {
+            margin-bottom: 8px;
+            line-height: 1.5;
+        }
+
+        .solution {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 15px;
+            border-radius: 10px;
+            width: 100%;
+            text-align: left;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            display: none;
+        }
+
+        .solution h3 {
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .solution-steps {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 10px;
+        }
+
+        .solution-step {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+        }
+
+        .win-message {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            flex-direction: column;
+            text-align: center;
+        }
+
+        .win-content {
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            max-width: 90%;
+        }
+
+        .win-content h2 {
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+        }
+
+        .win-content p {
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+        }
+
+        @media (min-width: 768px) {
+            .container {
+                width: 66.66%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>踩方块游戏</h1>
+        
+        <div class="game-info">
+            <p>点击方块，将所有方块变成绿色！</p>
+        </div>
+        
+        <div class="moves-counter">移动次数: <span id="moves">0</span></div>
+        
+        <div class="game-board" id="gameBoard">
+            <!-- 方块将通过JavaScript动态生成 -->
+        </div>
+        
+        <div class="controls">
+            <button id="newGame">新游戏</button>
+            <button id="hint">提示</button>
+            <button id="solve">显示答案</button>
+            <button id="editMode">编辑模式</button> <!-- 新增的编辑按钮 -->
+        </div>
+        
+        <div class="controls" id="editControls" style="display: none;">
+            <button id="doneEditing">完成编辑</button>
+        </div>
+        
+        <div class="solution" id="solution">
+            <h3>解决方案</h3>
+            <p>按照以下顺序点击方块：</p>
+            <div class="solution-steps" id="solutionSteps">
+                <!-- 解决方案步骤将通过JavaScript动态生成 -->
+            </div>
+        </div>
+        
+        <div class="instructions">
+            <h3>游戏规则</h3>
+            <p>1. 点击一个方块会切换它自身和相邻方块的状态</p>
+            <p>2. 红色方块表示0，绿色方块表示1</p>
+            <p>3. 目标是将所有方块变成绿色(1)</p>
+            <p>4. 尝试用最少的步数完成游戏</p>
+            <p>5. 使用"编辑模式"可以手动设置方块初始状态</p>
+        </div>
+    </div>
+    
+    <div class="win-message" id="winMessage">
+        <div class="win-content">
+            <h2>恭喜你赢了！</h2>
+            <p>你用了 <span id="finalMoves">0</span> 步完成游戏</p>
+            <button id="playAgain">再玩一次</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const gameBoard = document.getElementById('gameBoard');
+            const movesDisplay = document.getElementById('moves');
+            const newGameBtn = document.getElementById('newGame');
+            const hintBtn = document.getElementById('hint');
+            const solveBtn = document.getElementById('solve');
+            const winMessage = document.getElementById('winMessage');
+            const finalMoves = document.getElementById('finalMoves');
+            const playAgainBtn = document.getElementById('playAgain');
+            const solution = document.getElementById('solution');
+            const solutionSteps = document.getElementById('solutionSteps');
+            
+            // 新增的编辑模式相关元素
+            const editModeBtn = document.getElementById('editMode');
+            const doneEditingBtn = document.getElementById('doneEditing');
+            const editControls = document.getElementById('editControls');
+            
+            let gameState = [1, 1, 1, 1, 0, 1, 1, 1, 1]; // 初始状态
+            let moves = 0;
+            let gameActive = true;
+            let isEditMode = false; // 新增：编辑模式状态
+            
+            // 初始化游戏板
+            function initGameBoard() {
+                gameBoard.innerHTML = '';
+                for (let i = 0; i < 9; i++) {
+                    const cell = document.createElement('div');
+                    cell.className = `cell ${gameState[i] ? 'on' : 'off'}`;
+                    cell.dataset.index = i;
+                    cell.textContent = gameState[i];
+                    cell.addEventListener('click', handleCellClick);
+                    gameBoard.appendChild(cell);
+                }
+                updateMoves();
+                solution.style.display = 'none';
+            }
+            
+            // 处理方块点击
+            function handleCellClick(e) {
+                const index = parseInt(e.target.dataset.index);
+                
+                if (isEditMode) {
+                    // 编辑模式下直接切换当前方块状态
+                    gameState[index] = 1 - gameState[index];
+                    updateBoard();
+                    return;
+                }
+                
+                if (!gameActive) return;
+                
+                toggleCell(index);
+                moves++;
+                updateMoves();
+                
+                if (checkWin()) {
+                    gameActive = false;
+                    showWinMessage();
+                }
+            }
+            
+            // 切换方块状态
+            function toggleCell(index) {
+                // 切换自身
+                gameState[index] = 1 - gameState[index];
+                
+                // 切换相邻方块
+                const neighbors = getNeighbors(index);
+                neighbors.forEach(neighbor => {
+                    if (neighbor >= 0 && neighbor < 9) {
+                        gameState[neighbor] = 1 - gameState[neighbor];
+                    }
+                });
+                
+                updateBoard();
+            }
+            
+            // 获取相邻方块索引
+            function getNeighbors(index) {
+                const neighbors = [];
+                const row = Math.floor(index / 3);
+                const col = index % 3;
+                
+                // 上
+                if (row > 0) neighbors.push(index - 3);
+                // 下
+                if (row < 2) neighbors.push(index + 3);
+                // 左
+                if (col > 0) neighbors.push(index - 1);
+                // 右
+                if (col < 2) neighbors.push(index + 1);
+                
+                return neighbors;
+            }
+            
+            // 更新游戏板显示
+            function updateBoard() {
+                const cells = document.querySelectorAll('.cell');
+                cells.forEach((cell, index) => {
+                    cell.className = `cell ${gameState[index] ? 'on' : 'off'}`;
+                    cell.textContent = gameState[index];
+                });
+            }
+            
+            // 检查是否获胜
+            function checkWin() {
+                return gameState.every(cell => cell === 1);
+            }
+            
+            // 更新移动次数显示
+            function updateMoves() {
+                movesDisplay.textContent = moves;
+            }
+            
+            // 显示获胜消息
+            function showWinMessage() {
+                finalMoves.textContent = moves;
+                winMessage.style.display = 'flex';
+            }
+            
+            // 开始新游戏
+            function startNewGame() {
+                // 生成随机初始状态
+                gameState = Array(9).fill().map(() => Math.round(Math.random()));
+                moves = 0;
+                gameActive = true;
+                winMessage.style.display = 'none';
+                solution.style.display = 'none';
+                
+                // 退出编辑模式（如果处于编辑模式）
+                if (isEditMode) {
+                    toggleEditMode();
+                }
+                
+                initGameBoard();
+            }
+            
+            // 显示提示
+            function showHint() {
+                if (!gameActive || isEditMode) return;
+                
+                // 这里可以实现提示算法
+                // 为了简化，我们只是随机选择一个可点击的方块
+                const availableMoves = gameState
+                    .map((_, index) => index)
+                    .filter(index => {
+                        // 模拟点击这个方块
+                        const tempState = [...gameState];
+                        
+                        // 切换自身
+                        tempState[index] = 1 - tempState[index];
+                        
+                        // 切换相邻方块
+                        const neighbors = getNeighbors(index);
+                        neighbors.forEach(neighbor => {
+                            if (neighbor >= 0 && neighbor < 9) {
+                                tempState[neighbor] = 1 - tempState[neighbor];
+                            }
+                        });
+                        
+                        // 如果点击后游戏状态有改善，则这是一个好的提示
+                        return tempState.some((cell, i) => cell !== gameState[i]);
+                    });
+                
+                if (availableMoves.length > 0) {
+                    const hintIndex = availableMoves[Math.floor(Math.random() * availableMoves.length)];
+                    const cells = document.querySelectorAll('.cell');
+                    cells[hintIndex].style.boxShadow = '0 0 15px 5px yellow';
+                    setTimeout(() => {
+                        cells[hintIndex].style.boxShadow = '';
+                    }, 1000);
+                }
+            }
+            
+            // 求解游戏 - 使用高斯消元法（模2）
+            function solveGame() {
+                // 构建影响矩阵
+                const effectMatrix = [];
+                for (let i = 0; i < 9; i++) {
+                    const row = Array(9).fill(0);
+                    row[i] = 1; // 自身影响
+                    const neighbors = getNeighbors(i);
+                    neighbors.forEach(n => row[n] = 1);
+                    effectMatrix.push(row);
+                }
+                
+                // 目标状态（全1）
+                const target = Array(9).fill(1);
+                
+                // 当前状态
+                const current = [...gameState];
+                
+                // 需要达到的状态变化
+                const neededChanges = target.map((val, idx) => (val - current[idx] + 2) % 2);
+                
+                // 使用高斯消元法求解
+                const solution = gaussianElimination(effectMatrix, neededChanges);
+                
+                return solution;
+            }
+            
+            // 高斯消元法（模2）
+            function gaussianElimination(matrix, target) {
+                const n = matrix.length;
+                const augmented = matrix.map((row, i) => [...row, target[i]]);
+                
+                // 前向消元
+                for (let i = 0; i < n; i++) {
+                    // 找到主元
+                    let pivot = i;
+                    while (pivot < n && augmented[pivot][i] === 0) {
+                        pivot++;
+                    }
+                    
+                    if (pivot === n) continue;
+                    
+                    // 交换行
+                    if (pivot !== i) {
+                        [augmented[i], augmented[pivot]] = [augmented[pivot], augmented[i]];
+                    }
+                    
+                    // 消元
+                    for (let j = i + 1; j < n; j++) {
+                        if (augmented[j][i] === 1) {
+                            for (let k = i; k <= n; k++) {
+                                augmented[j][k] = (augmented[j][k] + augmented[i][k]) % 2;
+                            }
+                        }
+                    }
+                }
+                
+                // 回代
+                const solution = Array(n).fill(0);
+                for (let i = n - 1; i >= 0; i--) {
+                    if (augmented[i][i] === 0) {
+                        if (augmented[i][n] === 0) {
+                            // 无穷多解，取0
+                            solution[i] = 0;
+                        } else {
+                            // 无解，返回空
+                            return null;
+                        }
+                    } else {
+                        solution[i] = augmented[i][n];
+                        for (let j = i - 1; j >= 0; j--) {
+                            augmented[j][n] = (augmented[j][n] + augmented[j][i] * solution[i]) % 2;
+                        }
+                    }
+                }
+                
+                return solution;
+            }
+            
+            // 显示解决方案
+            function showSolution() {
+                if (!gameActive || isEditMode) return;
+                
+                const solutionArray = solveGame();
+                if (solutionArray) {
+                    solutionSteps.innerHTML = '';
+                    const steps = [];
+                    
+                    solutionArray.forEach((click, index) => {
+                        if (click === 1) {
+                            steps.push(index + 1); // 转换为1-9的位置编号
+                        }
+                    });
+                    
+                    // 显示解决方案步骤
+                    steps.forEach(step => {
+                        const stepElement = document.createElement('div');
+                        stepElement.className = 'solution-step';
+                        stepElement.textContent = `点击 ${step}`;
+                        solutionSteps.appendChild(stepElement);
+                    });
+                    
+                    solution.style.display = 'block';
+                    
+                    // 高亮显示需要点击的方块
+                    const cells = document.querySelectorAll('.cell');
+                    cells.forEach((cell, index) => {
+                        if (solutionArray[index] === 1) {
+                            cell.style.boxShadow = '0 0 15px 5px #ffeb3b';
+                        }
+                    });
+                } else {
+                    alert("无法找到解决方案！");
+                }
+            }
+            
+            // 新增：编辑模式切换函数
+            function toggleEditMode() {
+                isEditMode = !isEditMode;
+                
+                if (isEditMode) {
+                    // 进入编辑模式
+                    editModeBtn.textContent = '退出编辑';
+                    editControls.style.display = 'flex';
+                    gameActive = false;
+                    
+                    // 更改方块样式以提示编辑模式
+                    const cells = document.querySelectorAll('.cell');
+                    cells.forEach(cell => {
+                        cell.style.border = '2px solid yellow';
+                    });
+                } else {
+                    // 退出编辑模式
+                    editModeBtn.textContent = '编辑模式';
+                    editControls.style.display = 'none';
+                    gameActive = true;
+                    
+                    // 恢复方块样式
+                    const cells = document.querySelectorAll('.cell');
+                    cells.forEach(cell => {
+                        cell.style.border = '';
+                    });
+                    
+                    // 重置移动计数
+                    moves = 0;
+                    updateMoves();
+                }
+            }
+            
+            // 事件监听
+            newGameBtn.addEventListener('click', startNewGame);
+            hintBtn.addEventListener('click', showHint);
+            solveBtn.addEventListener('click', showSolution);
+            playAgainBtn.addEventListener('click', startNewGame);
+            
+            // 新增：编辑模式相关事件监听
+            editModeBtn.addEventListener('click', toggleEditMode);
+            doneEditingBtn.addEventListener('click', toggleEditMode);
+            
+            // 初始化游戏
+            startNewGame();
+        });
+    </script>
+</body>
+</html>
